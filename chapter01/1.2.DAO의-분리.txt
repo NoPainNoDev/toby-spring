@@ -7,7 +7,7 @@
 소프트웨어 개발에서 끝이란 개념은 없다.
 사용자의 비즈니스 프로세스와 그에 따른 요구사항은 끊임없이 바뀌고 발전한다.
 기술도 시간이 지남에 따라 바뀌고, 운영되는 환경도 변한다.
-더이상 사용되지 않아 폐기처분될 때까 돼야 변화는 중단된다.
+더이상 사용되지 않아 폐기처분될때까지는 돼야 변화는 중단된다.
 
 
 개발자가 객체지향 설계를 할때 가장 염두해둬야 할 것이 바로 '미래의 변화를 어떻게 대비할 것인가?' 이다.
@@ -218,8 +218,8 @@ public class Sub1 extends Super {   // 슈퍼클래스 메소드를 오버라이
 
     UserDao에서 상속구조를 이용해 커넥션 생성의 관심을 서브클래스로 넘긴 경우가 팩토리 메소드 패턴의 대표적인 예라고 할 수 있다.
 
-    UserDao --> NUserDao --> (getConnection 으로 커넥션 생성) --> AConnection
-            --> DUserDao --> (getConnection 으로 커넥션 생성) --> BConnection
+    UserDao --> NUserDao --> (getConnection 으로 커넥션 생성) --> AConnection --> Connection(A) 사용
+            --> DUserDao --> (getConnection 으로 커넥션 생성) --> BConnection --> Connection(B) 사용
 
 
 하지만 이 방법들은 상속을 사용하였다는 단점이 있다.
