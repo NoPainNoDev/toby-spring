@@ -1,0 +1,151 @@
+
+변화의 성격이 다르다 --> 이유, 시기, 주기 등이 다르다
+
+변화의 성격이 다른 것들끼리 분류해서 추상 클래스, 서브 클래스로 사용한다.
+==> 서로 영향을 주지 않은 채로 필요한 시점에 독립적으로 변경한다.
+
+하지만, 상속을 적용했다는 점에서 불편한 점이 있다.
+
+
+## 1.3.1 클래스의 분리
+상속보다 더 화끈하게 분리해보자.
+두개의 관심사를 본격적으로 독립시키면서 손쉽게 확장할 수 있는 방법을 알아본다.
+
+DB 커넥션과 관련된 부분을 서브클래스가 아닌, 아예 별도의 클래스에 담는다.
+이렇게 만든 클래스는 UserDao가 이용하게 한다.
+
+UserDao         ===========================>        SimpleConnectionMaker
+    simpleConnectionMaker                               makeConnection()
+    add()
+    get()
+
+SimpleConnectionMaker라는 새로운 클래스를 만들고 DB 생성기능을 그 안에 넣는다.
+그리고 UserDao에서는 new 키워드를 이용해 SimpleConnectionMaker 클래스 오브젝트를 만들고,
+add(), get() 메소드에서 사용하게 한다.
+매번 만들어서 사용하는 것 보다는 오브젝트 내에 저장해두고 사용하는 편이 더 간편하다.
+
+----------------------------------------------------------------------------
+public class UserDao {
+    private SimpleConnectionMaker simpleConnectionMaker;
+
+    public UserDao {
+        // 상태를 관리하는 것도 아니니 한 번만 만들어 인스턴스 변수에 저장해두고 메소드에서 사용하게 된다.
+        simpleConnectionMaker = new SimpleConnectionMaker();    
+    }
+
+    public void add(User user) throws ClassNotFoundException, SQLException {
+        Connection c = simpleConnectionMaker.makeNewConnection();
+        ...
+    }
+
+    public User get(String id) throws ClassNotFoundException, SQLException {
+        Connection c = simpleConnectionMaker.makeNewConnection();
+        ...
+    }
+}
+----------------------------------------------------------------------------
+
+----------------------------------------------------------------------------
+package springbook.user.dao;
+...
+public class SimpleConnectionMaker {
+    public Connection makeNewConnection {
+        public Connection makeNewConnection() throws ClassNotFoundException,
+        SQLException {
+            Class.forName("com.mysql.jdbc.Driver");
+            Connection c = DriverManager.getConnection(
+                                "jdbc:mysql://localhost/springbook", "spring", "book");
+            return c;
+        }
+    }
+}
+----------------------------------------------------------------------------
+
+성격이 다른 코드를 분리하였지만, 이번엔 다른 문제가 발생하였다.
+N 사와 D 사에 UserDao 클래스만 공급하고 상속을 통해 DB 커넥션 기능을 사용했던게 다시 불가능해졌다.
+
+SimpleConnectionMaker 클래스에 종속되어 있기 때문에 상속을 사용했을 때처럼 UserDao 코드가
+수정없이 DB 커넥션 생성 기능을 변경할 방법이 없다.
+알맞은 커넥션을 제공하는 클래스를 사용하기 위해서는 UserDao 소스코드 다음 줄을 직접 수정해야 한다.
+소스코드를 함께 제공하지 않고는 DB 연결 방법을 바꿀 수 없다는 문제로 다시 되돌아왔다.
+
+
+## 1.3.2 인터페이스의 도입 
+이러한 문제를 해결해주기 위해 서로 긴밀하게 연결되지 않도록 중간에 추상적인 느슨한 연결고리를 만들어준다.
+이를 위해 자바가 제공하는 가장 유용한 도구는 바로 인터페이스이다.
+
+인터페이스는 자신을 구현한 클래스에 대한 구체적인 정보는 모두 감춘다.
+오브젝트를 만들기 위해 구체적인 클래스 하나를 선택해야겠지만, 인터페이스로 추상화해놓은 최소한 통로를 통해 
+접근하는 쪽에서는 오브젝트를 만들때 사용할 클래스가 무엇인지 몰라도된다.
+인터페이스를 통해 접근하면 실제 구현 클래스를 바꿔도 신경 쓸 일이 없다.
+
+인터페이스를 도입하면, 이제 UserDao는 자신이 사용할 클래스를 몰라도 된다.
+인터페이스를 이용해 원하는 기능을 사용하기만 하면 된다.
+
+UserDao =========================>  ConnectionMaker
+    connectionMaker                     makeConnection()
+    add()                               ---------------> NConnectionMaker
+    get()                                                   makeConnection() 세부구현
+                                        ---------------> DConnectionMaker
+                                                            makeConnection() 세부구현
+
+인터페이스는 어떤 일을 하겠다는 기능만 정의해놓은 것이다. 따라서 어떻게 하겠다는 구현 방법은 나타나 있지 않다.
+구현 방법은 이를 구현한 클래스들이 알아서 결정할 일이다.
+UserDao가 인터페이스를 사용하게 한다면 인터페이스 메소드를 통해 알 수 있는 기능에만 관심을 가지면 된다.
+
+ConnectionMaker 인터페이스
+----------------------------------------------------------------------------
+package springbook.user.dao;
+...
+public interface ConnectionMaker {
+    public Connection makeConnection() throws ClassNotFoundException, 
+            SQLException;
+}
+----------------------------------------------------------------------------
+
+ConnectionMaker 구현 코드
+----------------------------------------------------------------------------
+package springbook.user.dao;
+...
+public class DConnectionMaker implements ConnectionMaker {
+    ...
+    public Connection makeConnection() throws ClassNotFoundException, SQLException {
+        // D 사의 독자적인 방법으로 Connection을 생성하는 코드
+    }
+}
+----------------------------------------------------------------------------
+
+인터페이스를 사용하도록 개편한 UserDao
+----------------------------------------------------------------------------
+public class UserDao {
+    private ConnectionMaker connectionMaker; // 구체적인 클래스를 알 필요가 없다.
+
+    public UserDao() {
+        connectionMaker = new DConnectionMaker(); // 앗.. 여기에 세부구현 클래스가?
+    }
+
+    public void add(User user) throws ClassNotFoundException, SQLException {
+        Connection c = connectionMaker.makeConnection(); // 클래스가 바뀌어도 메소드가 바뀔 걱정이 없다
+        ...
+    }
+
+    public User get(String id) throws ClassNotFoundException, SQLException {
+        Connection c = connectionMaker.makeConnection();
+        ...
+    }
+}
+----------------------------------------------------------------------------
+
+이제 D사나 N사가 구현 클래스를 새로 만든다고 해도 UserDao 코드를 수정할 일은 없을 것 같다.
+하지만, UserDao 코드를 자세히 살펴보면 DConnection이라는 클래스 이름이 보인다.
+DConnection 클래스의 생성자를 호출해 오브젝트를 생성하는 코드가 여전히 UserDao에 남아있다.
+
+connectionMaker = new DConnectionMaker();
+
+인터페이스를 사용해 구체적으로 커넥션을 사용하고 있던 코드를 제거되었지만, 
+초기에 한 번 어떤 클래스의 오브젝트를 사용할지 결정하는 코드는 제거되지 않았다.
+여전히 UserDao 소스코드를 함께 제공해, 필요할 때마다 UserDao 생성자 메소드를 직접 수정하라고 하지 않고는
+고객에게 자유로운 DB 커넥션 확장 기능을 제공할 수 없다.
+
+
+## 1.3.3 관계설정 책임의 분리
