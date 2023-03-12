@@ -1,0 +1,69 @@
+#제어의 역전 IoC(Inversion of Control)
+
+제어의 역전 패턴은 'GoF 디자인 패턴' 책에서도 찾아볼 수 있다.
+제어의 역전이 무엇인지 살펴보고 코드를 개선해보자.
+
+## 1.4.1 오브젝트 팩토리
+UserDaoTest는 ConnectionMaker 구현 클래스 사용을 결정하는 기능을 얼떨결에 떠맡고 있었다.
+UserDao가 ConnectionMaker로 부터 완벽히 독립할 수 있게 UserDaoTest가 그 수고를 담당하게 된 것이다.
+하지만 UserDaoTest는 테스트하려고 만든것이니, 또 다른 책임을 떠맡고 있으니 뭔가 문제가 있다.
+그러니 이것도 분리해야 한다. 
+즉, UserDao와 ConnectionMaker구현 클래스 두 개의 오브젝트가 연결돼서 사용될 수 있게 관계를 맺어주는 관심을 분리해야 한다.
+
+### 팩토리(factory) 
+1. 객체의 생성방법 결정
+2. 생성한 오브젝트를 돌려줌
+
+(앞서나온 추상 팩토리 패턴, 메소드 팩토리 패턴과는 다르니, 혼동하지 말자)
+
+UserDao의 생성 책임을 맡은 팩토리 클래스
+==========================================================================================
+package springbook.user.dao;
+...
+public class DaoFactory {
+    public UserDao userDao() {
+        // 팩토리 메소드는 UserDao 타입의 오브젝트를 어떻게 만들고, 어떻게 준비시킬지 결정한다.
+        ConnectionMaker connectionMaker = new DConnectionMaker();   
+        UserDao userDao = new UserDao(connectionMaker);
+        return userDao;
+    }
+}
+==========================================================================================
+
+팩토리를 사용하도록 수정한 UserDaoTest
+==========================================================================================
+public class UserDaoTest {
+    public static void main(String[] args) throws ClassNotFoundException,
+        SQLException {
+            UserDao dao = new DaoFactory.userDao();
+            ...
+        }
+}
+==========================================================================================
+
+### 설계도로서의 팩토리
+분리된 오브젝트들의 역할과 관계를 분석하면 다음과 같다.
+
+* UserDao와 ConnectionMaker --> 각각 애플리케이션의 핵심적인 데이터 로직, 기술 로직을 담당 (컴포넌트)
+* DaoFactory --> 애플리케이션의 오브젝트들을 구성, 관계 정의 (컴포넌트들의 관계를 정의하는 설계도)
+
+(여기서의 설계도 : 어떤 오브젝트가 어떤 오브젝트를 사용하는지 정의해놓은 코드)
+
+
+* 오브젝트 팩토리를 활용한 구조
+(컴포넌트)     Client --(사용)--> UserDao --(사용)--> ConnectionMaker
+                                  ↑                     ↑
+                                (생성)                   ↑
+                                  ↑              DConnectionMaker
+(설계도)                                                  ↑
+                    -(요청)-> DaoFactory --(생성)-->      ↑
+
+이제 코드의 수정이 일어나는 경우 DaoFactory를 수정해주면된다.
+UserDao는 변경이 필요 없으므로 안전하게 소스코드를 보존할 수 있는 동시에 DB 연결 방식을 자유롭게 확장이 가능하다.
+
+Factory를 분리했을 때 얻을 수 있는 장점을 매우 다양하다.
+그중에서도 컴포넌트 역할을 하는 오브젝트와 구조를 결정하는 오브젝트를 분리했다는 데 가장 의미가 있다.
+
+(컴포넌트 오브젝트) <------ (구조결정 오브젝트)
+
+## 1.4.2 오브젝트 팩토리의 활용
